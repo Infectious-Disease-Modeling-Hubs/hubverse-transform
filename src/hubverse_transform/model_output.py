@@ -26,14 +26,23 @@ class ModelOutputHandler:
         self.fs_output = output_filesystem[0]
         self.output_path = output_filesystem[1]
 
+        self.valid_file = True
+
         # get file name and type from input file
         path = AnyPath(self.input_file)
         self.file_name = path.stem
         self.file_type = path.suffix
 
+        # handle case when the function is triggered without a file
+        # (e.g., if someone manually creates a folder in an S3 bucket)
+        if not path.suffix:
+            msg = "Input file has no extension"
+            self.raise_invalid_file_warning(str(path), msg)
+
         # TODO: Add other input file types as needed
         if self.file_type not in [".csv", ".parquet"]:
-            raise NotImplementedError(f"Unsupported file type: {path.suffix}")
+            msg = f"Input file type {self.file_type} is not supported"
+            self.raise_invalid_file_warning(str(path), msg)
 
         # Parse model-output file name into individual parts
         # (round_id, model_id)
@@ -66,6 +75,17 @@ class ModelOutputHandler:
         s3_output_uri = f"s3://{bucket_name}/{destination_path}"
 
         return cls(s3_input_uri, s3_output_uri)
+
+    def raise_invalid_file_warning(self, path: str, msg: str) -> None:
+        """Raise a warning if the class was instantiated with an invalid file."""
+
+        logger.warning(
+            {
+                "message": msg,
+                "file": path,
+            }
+        )
+        raise UserWarning(msg)
 
     def sanitize_uri(self, uri: str, safe=":/") -> str:
         """Sanitize URIs for use with pyarrow's filesystem."""

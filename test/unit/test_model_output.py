@@ -244,13 +244,6 @@ def test_parse_s3_key_invalid_format(file_uri, expected_error):
         ModelOutputHandler(file_uri, "mock:fake-output-uri")
 
 
-def test_parse_input_file_invalid_type():
-    input_uri = "mock:raw/prefix1/prefix2/2000-01-01-team1-model1.jpg"
-
-    with pytest.raises(NotImplementedError):
-        ModelOutputHandler(input_uri, "mock:fake-output-uri")
-
-
 def test_add_columns(model_output_table):
     file_uri = "mock:raw/prefix1/prefix2/2420-01-01-team-model.csv"
     mo = ModelOutputHandler(file_uri, "mock:fake-output-uri")
@@ -323,3 +316,18 @@ def test_transform_model_output_path(test_csv_file, tmpdir):
     assert output_path.suffix == ".parquet"
     assert "raw" not in output_path.parts
     assert input_path.stem in output_path.stem
+
+
+@pytest.mark.parametrize(
+    "file_uri",
+    [
+        ("mock:raw/prefix1/prefix2/"),
+        ("mock:raw/prefix1/prefix2/round_id-team-model.txt"),
+        ("mock:photo.jpg"),
+        ("mock:raw/prefix1/prefix2/01-02-2440-team-model-name"),
+    ],
+)
+def test_invalid_file_warning(file_uri):
+    # ensure ValueError is raised for invalid model-output file name format
+    with pytest.raises(UserWarning):
+        ModelOutputHandler(file_uri, "mock:fake-output-uri")

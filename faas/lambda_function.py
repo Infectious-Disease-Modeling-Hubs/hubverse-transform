@@ -46,6 +46,8 @@ def lambda_handler(event, context):
     try:
         mo = ModelOutputHandler.from_s3(bucket, key)
         mo.transform_model_output()
+    except UserWarning:
+        pass
     except Exception as e:
         logger.exception(f"Error transforming file: {bucket}/{key}")
         raise e

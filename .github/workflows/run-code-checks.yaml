@@ -32,3 +32,15 @@ jobs:
 
       - name: run tests 🧪
         run: pytest
+
+      - name: generate coverage report 📊
+        run: python -m coverage xml -o coverage_report.xml
+
+      - name:
+        uses: orgoro/coverage@v3.1
+        with:
+          coverageFile: coverage_report.xml
+          thresholdNew: 80
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+
