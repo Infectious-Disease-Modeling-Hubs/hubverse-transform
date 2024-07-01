@@ -1,7 +1,9 @@
-# mypy: disable-error-code="operator"
+# mypy: disable-error-code="operator, arg-type"
 
+import itertools
 import json
 import os
+from datetime import date
 
 from cloudpathlib import AnyPath
 
@@ -46,6 +48,30 @@ class HubConfig:
     def __str__(self):
         return f"Hubverse config information for {self.hub_name}."
 
+    def get_task_id_values(self) -> dict[str, set]:
+        """
+        Return a dict of hub task ids and values for a specific round.
+
+        Returns
+        -------
+        model_tasks : dict[str, list]
+            A mapping of tasks ids to their possible values, as
+            defined in a hub's tasks.json configuration file.
+        """
+
+        tasks = self.tasks
+        rounds = tasks.get("rounds", [])
+
+        model_tasks_dict: dict[str, set] = dict()
+
+        for r in rounds:
+            for task_set in r.get("model_tasks", []):
+                task_values = self._get_task_id_values(task_set)
+                for key, value in task_values.items():
+                    model_tasks_dict[key] = model_tasks_dict.get(key, set()) | value
+
+        return model_tasks_dict
+
     def _get_admin_config(self, admin_file: str):
         """Read a Hubverse hub's admin configuration file."""
         admin_path = self.hub_config_path / admin_file
@@ -65,3 +91,31 @@ class HubConfig:
 
         with tasks_path.open() as f:
             return json.loads(f.read())
+
+    def _get_task_id_values(self, task_set: dict) -> dict[str, set]:
+        """Return a dict of ids and values for a specific modeling task."""
+        task_id_values = dict()
+
+        # create a dictionary of all tasks ids and values for this task
+        task_ids = {task_id[0]: task_id[1] for task_id in task_set.get("task_ids", {}).items()}
+
+        # flatten the dictionary values for each task_id (i.e., combine "required" and "optional" lists)
+        for task_id in task_ids.items():
+            task_id_values[task_id[0]] = set(
+                itertools.chain.from_iterable([value or [] for value in task_id[1].values()])
+            )
+
+        return task_id_values
+
+    def _get_data_type(self, value: int | bool | str | date | float) -> type:
+        """Return the data type of a value."""
+        data_type = type(value)
+
+        if data_type == str:
+            try:
+                date.fromisoformat(value)
+                data_type = date
+            except ValueError:
+                pass
+
+        return data_type
